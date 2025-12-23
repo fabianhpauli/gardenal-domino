@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/useAuth';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { InputWithLabel } from '@/components/ui/input-with-label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus, Loader2, Key, Trash2 } from 'lucide-react';
 
 interface User {
@@ -98,6 +99,29 @@ export default function UsersPage() {
     }
   };
 
+  const handleUpdateName = async (userId: string, currentName: string) => {
+    const newName = prompt('Digite o novo nome:', currentName);
+    if (!newName || newName === currentName) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/name`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Erro ao alterar nome');
+      }
+
+      setSuccess('Nome alterado com sucesso!');
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   if (loading || !user || user.role !== 'admin') {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -138,7 +162,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateUser} className="space-y-4">
-              <Input
+              <InputWithLabel
                 label="Nome"
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
@@ -146,7 +170,7 @@ export default function UsersPage() {
                 required
               />
 
-              <Input
+              <InputWithLabel
                 label="Email"
                 type="email"
                 value={newUser.email}
@@ -155,7 +179,7 @@ export default function UsersPage() {
                 required
               />
 
-              <Input
+              <InputWithLabel
                 label="Senha"
                 type="password"
                 value={newUser.password}
@@ -164,29 +188,33 @@ export default function UsersPage() {
                 required
               />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Tipo
                 </label>
-                <select
+                <Select
                   value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'user' })}
-                  className="block w-full rounded-lg border-0 px-3 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:text-sm"
+                  onValueChange={(value) => setNewUser({ ...newUser, role: value as 'admin' | 'user' })}
                 >
-                  <option value="user">Usuário</option>
-                  <option value="admin">Administrador</option>
-                </select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">Usuário</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex gap-3">
-                <Button type="submit" fullWidth>
+                <Button type="submit" className="w-full">
                   Criar Usuário
                 </Button>
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => setShowNewUserForm(false)}
-                  fullWidth
+                  className="w-full"
                 >
                   Cancelar
                 </Button>
@@ -223,9 +251,18 @@ export default function UsersPage() {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUpdateName(u.id, u.name)}
+                      title="Editar nome"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => handleResetPassword(u.id)}
+                      title="Redefinir senha"
                     >
                       <Key className="h-4 w-4" />
                     </Button>

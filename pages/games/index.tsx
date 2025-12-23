@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/useAuth';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Trophy, Plus, Filter, Award } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,7 +13,7 @@ interface Game {
   scoreA: number;
   scoreB: number;
   finished: boolean;
-  lisa: boolean;
+  lisa: string[]; // Array de UUIDs dos jogadores que fizeram lisa, ou array vazio
   createdAt: any;
 }
 
@@ -23,6 +23,8 @@ export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'finished'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -55,8 +57,27 @@ export default function GamesPage() {
   }
 
   const filteredGames = games.filter((game) => {
-    if (filter === 'active') return !game.finished;
-    if (filter === 'finished') return game.finished;
+    // Filter by status
+    if (filter === 'active' && game.finished) return false;
+    if (filter === 'finished' && !game.finished) return false;
+    
+    // Filter by search query (player names)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const allPlayers = [...game.teamA, ...game.teamB];
+      const hasMatchingPlayer = allPlayers.some(player => 
+        player.name.toLowerCase().includes(query)
+      );
+      if (!hasMatchingPlayer) return false;
+    }
+    
+    // Filter by date
+    if (dateFilter) {
+      const gameDate = new Date(game.createdAt?.seconds * 1000 || Date.now());
+      const filterDate = new Date(dateFilter);
+      if (gameDate.toDateString() !== filterDate.toDateString()) return false;
+    }
+    
     return true;
   });
 
@@ -82,21 +103,21 @@ export default function GamesPage() {
       {/* Filters */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         <Button
-          variant={filter === 'all' ? 'primary' : 'secondary'}
+          variant={filter === 'all' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilter('all')}
         >
           Todas
         </Button>
         <Button
-          variant={filter === 'active' ? 'primary' : 'secondary'}
+          variant={filter === 'active' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilter('active')}
         >
           Em Andamento
         </Button>
         <Button
-          variant={filter === 'finished' ? 'primary' : 'secondary'}
+          variant={filter === 'finished' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilter('finished')}
         >
@@ -104,6 +125,7 @@ export default function GamesPage() {
         </Button>
       </div>
 
+      {/* Games List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
@@ -133,10 +155,11 @@ export default function GamesPage() {
       ) : (
         <div className="grid gap-4">
           {filteredGames.map((game) => {
+            // O vencedor é quem NÃO atingiu 100 pontos (adversário perdeu ao chegar a 100)
             const winner = game.finished
               ? game.scoreA >= 100
-                ? 'A'
-                : 'B'
+                ? 'B'  // Time A chegou a 100, então Time B venceu
+                : 'A'  // Time B chegou a 100, então Time A venceu
               : null;
 
             return (
@@ -155,7 +178,7 @@ export default function GamesPage() {
                           }`}>
                             {game.finished ? 'Finalizada' : 'Em Andamento'}
                           </span>
-                          {game.lisa && (
+                          {Array.isArray(game.lisa) && game.lisa.length > 0 && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                               <Award className="h-3 w-3 mr-1" />
                               Lisa
